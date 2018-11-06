@@ -1,10 +1,14 @@
 var itemNoDesWidth = 116;
 
-function generateQR(id, withDescription, isSelectFile, repetition) {
+function generateQR(id, withDescription, isSelectFile, repetition, selectedPathId) {
   if(isSelectFile) {
     generateFileQR(id, withDescription, repetition);
   } else {
     generateFolderQR(id, withDescription, repetition);
+  }
+  
+  if(selectedPathId != null) {
+    saveDocumentToFolder(selectedPathId);
   }
 }
 
@@ -130,4 +134,11 @@ function insertCell(name, blob, row) {
   image.getParent().setAttributes(horizontalAlignment);
   cell.setText("\n" + name);
   cell.setAttributes(horizontalAlignment);
+}
+
+function saveDocumentToFolder(pathId) {
+  var doc = DocumentApp.create(DocumentApp.getActiveDocument().getName());
+  var docFile = DriveApp.getFileById(doc.getId());
+  DriveApp.getFolderById(pathId).addFile(docFile);
+  DriveApp.getRootFolder().removeFile(docFile);
 }

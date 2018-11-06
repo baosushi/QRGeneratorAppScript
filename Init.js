@@ -65,8 +65,3 @@ function showOptions() {
   
   DocumentApp.getUi().showModalDialog(html, 'aaaaaaaaaaaaaaaaaaa');
 }
-
-function getOAuthToken() {
-  DriveApp.getRootFolder();
-  return ScriptApp.getOAuthToken();
-}

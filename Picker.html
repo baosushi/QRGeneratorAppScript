@@ -53,7 +53,7 @@
   </style>
   <script type="text/javascript">
     var pickerData = <?!= JSON.stringify(pickerData) ?>; //Stores the data statically in the js code
-  
+    var token = "";
     var DIALOG_DIMENSIONS = {
         width: 600,
         height: 425
@@ -61,6 +61,7 @@
     var pickerApiLoaded = false;
     
     var selectedItemId = null;
+    var selectedPathId = null;
 
     function onApiLoad() {
         gapi.load('picker', {
@@ -96,7 +97,6 @@
                 .build();
 
             picker.setVisible(true);
-
         } else {
             showError('Unable to load the file picker.');
         }
@@ -142,7 +142,63 @@
     
     function generate() {
         var repetition = document.getElementById('repetition').value;
-        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure).generateQR(selectedItemId, pickerData.withDescription, pickerData.isSelectFile, repetition);
+        if(document.getElementById('').checked && selectedPathId) {
+            google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure).generateQR(selectedItemId, pickerData.withDescription, pickerData.isSelectFile, repetition, selectedPathId);
+        } else {
+            google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure).generateQR(selectedItemId, pickerData.withDescription, pickerData.isSelectFile, repetition);
+        }
+    }
+    
+    function saveToDriveChange() {
+        if(document.getElementById('saveToDrive').checked) {
+            document.getElementById("path").disabled = false;
+            document.getElementById("browse").disabled = false;
+        } else {
+            document.getElementById("browse").disabled = true;
+            var input = document.getElementById("path");
+            input.disabled = true;
+            input.value = "";
+        }
+    }
+    
+    function browse() {
+        google.script.run.withSuccessHandler(createBrowse)
+            .withFailureHandler(showError).getOAuthToken();
+    }
+    
+    function createBrowse(token) {
+        var docsView = new google.picker.DocsView()
+            .setMimeTypes('application/vnd.google-apps.folder')
+            .setIncludeFolders(true)
+            .setSelectFolderEnabled(true)
+            .setOwnedByMe(true);
+
+        var picker = new google.picker.PickerBuilder()
+            .addView(docsView)
+            .enableFeature(google.picker.Feature.NAV_HIDDEN)
+            .hideTitleBar()
+            .setSize(DIALOG_DIMENSIONS.width - 2, DIALOG_DIMENSIONS.height - 2)
+            .setOAuthToken(token)
+            .setCallback(browseCallback)
+            .setOrigin('https://docs.google.com')
+            .build();
+
+        picker.setVisible(true);
+    }
+    
+    function browseCallback(data) {
+        var action = data[google.picker.Response.ACTION];
+        if (action == google.picker.Action.PICKED) {
+            var doc = data[google.picker.Response.DOCUMENTS][0];
+            selectedPathId = doc[google.picker.Document.ID];
+            
+            google.script.run.withSuccessHandler(getPathCallback)
+                .withFailureHandler(showError).getFullPathById(selectedPathId, false);
+        }
+    }
+    
+    function getPathCallback(path) {
+        document.getElementById("path").value = path;
     }
   </script>
 </head>
@@ -158,7 +214,7 @@
         <div class="form-group row">
             <label class="col-4 col-form-label">Export options</label>
             <div class="col-auto">
-                <input type="checkbox" id="saveToDrive" /> Save export Doc to Google drive <br>
+                <input type="checkbox" id="saveToDrive" onchange="saveToDriveChange()" /> Save export Doc to Google drive <br>
                 <input type="checkbox" id="downloadFile" /> Download export Doc
             </div>
         </div>
@@ -166,6 +222,9 @@
             <label class="col-4 col-form-label" for="path">Drive save path</label>
             <div class="col-5">
                 <input id="path" name="path" type="text" class="form-control" disabled />
+            </div>
+            <div class="col-2">
+                <button id="browse" onclick="browse()" disabled>Browse...</button>
             </div>
         </div>
         <div class="row">
